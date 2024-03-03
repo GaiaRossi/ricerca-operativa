@@ -1,3 +1,5 @@
+# TODO: inserire la durata dei test e tutte le caratteristiche neccessarie dei nodi
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import itertools
