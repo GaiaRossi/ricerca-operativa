@@ -49,21 +49,65 @@ def trova_path(start, finish):
 
     return path
 
+def prossimo_test(neigh):
+    # scegli il paziente che libererebbe prima
+    # la saletta (makespan minore)
+    # elenco i pazienti che vedo direttamente
+    pazienti_vicino = []
+    for vicino in neigh:
+        if "p" in vicino:
+            # estraggo la label
+            label = vicino[:2]
+            pazienti_vicino.append(label)
+
+    # TODO: utilizzare list comprehension per rendere piu
+            # semplice il pezzo sotto
+    # [n for n in list(nx.neighbors(G, curr)) 
+                #   if f"t{i+1}" in n and
+                #   G.nodes[n]["completato"] == False and
+                #   G.nodes[n]["occupato"] == False and
+                #   G.nodes[n]["prec_ok"] == True
+                # ]
+    # calcolo la somma dei tempi dei test rimanenti
+    somme = {}
+    for paziente in pazienti_vicino:
+        index = int(paziente[-1]) - 1
+        tutti_test_per_paziente = tests[index]
+        # guardo i test che devono essere ancora eseguiti
+        tot = 0
+        for test in tutti_test_per_paziente:
+            label = f"{paziente}t{test}"
+            tot += G.nodes[label]["durata"]
+        somme[paziente] = tot
+
+    # prende il primo elemento del dizionario
+    min = None
+    min_durata = 10000000
+    for paziente in somme.items():
+        if paziente[1] < min_durata:
+            min_durata = paziente[1]
+            min = paziente
+
+    nodo = f"{min[0]}t{neigh[0][-1]}"
+    return nodo
+    
+
 # generare i nodi che servono
 
 # nodo TiPj
-n_pazienti = 3
-pazienti = ["p1", "p2", "p3"]
-lista_tests = ["t1", "t2", "t3"]
-lista_durate = [2, 5, 3]
-lista_color = ['r', 'g', 'b']
-operatori = ["o1", "o2", "o3"]
-n_operatori = n_test = 3
+n_pazienti = 4
+pazienti = ["p1", "p2", "p3", "p4"]
+lista_tests = ["t1", "t2", "t3", "t4", "t5"]
+lista_durate = [2, 5, 3, 4, 7]
+lista_color = ['r', 'g', 'b', 'c', 'y']
+operatori = ["o1", "o2", "o3", "o4", "o5"]
+n_operatori = n_test = 5
 # facciamo che la lista segna l ordine
 tests = [
-    [1, 2],
-    [1, 3],
-    [1, 2, 3]
+    [1, 2, 5, 3],
+    [1, 3, 4, 2],
+    [1, 2, 3, 4, 5],
+    [2, 3, 1]
 ]
 
 G = nx.DiGraph()
@@ -118,13 +162,15 @@ for i in range(n_operatori):
 #     print(f"Operatore {operatori[i]} -> {path}")
 
 # sol 1
-ultimi_nodi = ["o1f", "o2f", "o3f"]
+ultimi_nodi = ["o1f", "o2f", "o3f", "o4f", "o5f"]
 finito = False
 step = 0
 path = [
     ["o1s"],
     ["o2s"],
-    ["o3s"]
+    ["o3s"],
+    ["o4s"],
+    ["o5s"]
 ]
 
 while not finito:
@@ -187,7 +233,7 @@ while not finito:
                 continue
 
         if neigh != []:
-            next = neigh[0]
+            next = prossimo_test(neigh)
             G.nodes[next]["start"] = step
             G.nodes[next]["finish"] = step + G.nodes[next]["durata"]
             curr_path.append(next)
@@ -196,6 +242,11 @@ while not finito:
     # conclusione ciclo
     finito = isFinito()
     step += 1
+
+# append nodo finale
+for p in path:
+    label = p[0].replace("s", "f")
+    p.append(label)
 
 for p in path:
     print(p)
