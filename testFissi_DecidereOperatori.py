@@ -75,7 +75,11 @@ def set_stato_pazienti():
                 if not G.nodes[nodo]["completato"]:
                     paziente_completato = "LIBERO"
 
-        stato_paziente[paziente] = paziente_completato
+        if paziente_completato == "COMPLETATO":
+            stato_paziente[paziente] = paziente_completato
+            nodo_per_estrarre_saletta = nodi_paziente[0]
+            saletta_da_liberare = G.nodes[nodo_per_estrarre_saletta]["saletta"]
+            stato_salette[saletta_da_liberare] = "LIBERA"
 
 
     for indice_paziente in range(n_pazienti):
@@ -114,10 +118,23 @@ def check_precedenze():
                 label = f"{pazienti[i]}t{test[j]}"
                 G.nodes[label]["prec_ok"] = ok
 
+def get_prima_saletta_libera():
+    saletta_libera = "NESSUNA"
+    for saletta, stato in stato_salette.items():
+        if saletta != None and stato == "LIBERA":
+            saletta_libera = saletta
+    return saletta_libera
+
 # nodo TiPj
 n_pazienti = 4
 pazienti = ["p1", "p2", "p3", "p4"]
 stato_paziente = {}
+
+stato_salette = {}
+stato_salette["S1"] = "LIBERA"
+stato_salette["S2"] = "LIBERA"
+stato_salette["S3"] = "LIBERA"
+
 lista_tests = ["t1", "t2", "t3", "t4", "t5"]
 lista_durate = [2, 5, 3, 4, 7]
 lista_color = ['r', 'g', 'b', 'c', 'y']
@@ -157,7 +174,7 @@ for i in range(n_pazienti):
     for j in range(len(test)):
         indice_test = test[j] - 1
         durata = lista_durate[indice_test]
-        G.add_node(f"{pazienti[i]}t{test[j]}", completato=False, durata=durata, start=-1, finish=-1, occupato=False, prec_ok=False)
+        G.add_node(f"{pazienti[i]}t{test[j]}", completato=False, durata=durata, start=-1, finish=-1, occupato=False, prec_ok=False, saletta=None)
 
 # generazione archi per precedenze
 for i in range(n_pazienti):
@@ -191,18 +208,23 @@ for i in range(n_operatori):
 
 while not finito:
     time.sleep(1)
-    print(f"numero_operatore_correnteent step {step}")
+    print(f"Istante corrente {step}")
 
     check_precedenze()
-    set_stato_pazienti()
 
+    for saletta, stato in stato_salette.items():
+        print(f"{saletta} -> {stato}")
     for i in range(n_operatori):
-        sale_occupate = numero_pazienti_occupati()
-        print(f"Sale occupate {sale_occupate}")
-        if sale_occupate <= 3:
-            percorso_operatore_corrente = path[i]
-            nodo_corrente = path[i][-1]
-            
+        set_stato_pazienti()
+        percorso_operatore_corrente = path[i]
+        nodo_corrente = path[i][-1]
+        if "p" in nodo_corrente:
+            if step > G.nodes[nodo_corrente]["finish"]:
+                saletta_da_liberare = G.nodes[nodo_corrente]["saletta"]
+                stato_salette[saletta_da_liberare] = "LIBERA"
+
+        saletta_da_usare = get_prima_saletta_libera()
+        if saletta_da_usare != "NESSUNA":
             neigh = [n for n in list(nx.neighbors(G, nodo_corrente)) 
                     if f"t{i+1}" in n and
                     G.nodes[n]["completato"] == False and
@@ -214,6 +236,7 @@ while not finito:
 
             if "p" in nodo_corrente:
                 # per evitare che acceda a finish dei nodi operatore
+                stato_salette[saletta_da_usare] = "OCCUPATA"
                 if step < G.nodes[nodo_corrente]["finish"]:
                     continue
 
@@ -221,6 +244,7 @@ while not finito:
                 next = prossimo_test_SPT(neigh)
                 G.nodes[next]["start"] = step
                 G.nodes[next]["finish"] = step + G.nodes[next]["durata"]
+                G.nodes[next]["saletta"] = saletta_da_usare
                 percorso_operatore_corrente.append(next)
                 G.nodes[next]["completato"] = True
 
